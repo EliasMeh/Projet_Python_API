@@ -10,6 +10,10 @@ on:
       - '.github/workflows/main_dashboardelias.yml'
   workflow_dispatch:
 
+concurrency:
+  group: azure-appservice-deploy
+  cancel-in-progress: false
+
 permissions:
   contents: read
   id-token: write
@@ -23,6 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    timeout-minutes: 15
 
     steps:
       - name: Checkout repository
@@ -42,6 +47,7 @@ jobs:
 
       - name: Prepare deployment package
         run: |
+          rm -rf package
           mkdir -p package
           cp requirements.txt package/
           cp dashboard/app.py package/
@@ -58,6 +64,7 @@ jobs:
     permissions:
       id-token: write
       contents: read
+    timeout-minutes: 20
 
     steps:
       - name: Download artifact from build job
