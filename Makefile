@@ -1,4 +1,4 @@
-.PHONY: up down logs test lint dev deploy
+.PHONY: up down logs test lint dev
 
 up:
 	docker compose up --build -d
@@ -17,6 +17,3 @@ lint:
 
 dev:
 	python -m uvicorn api.main:app --reload --port 8000 & python -m streamlit run dashboard/app.py --server.address 0.0.0.0 --server.port 8501
-
-deploy:
-	bash scripts/deploy_container_app.sh

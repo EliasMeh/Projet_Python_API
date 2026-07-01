@@ -64,6 +64,54 @@ make deploy
 
 Le script crée ou met à jour le resource group, l'ACR, l'environnement Container Apps et la Container App. Il publie l'image Docker dans ACR avec ton identité Azure CLI, puis active une identité managée sur la Container App.
 
+## Pipeline GitHub Actions
+
+Le workflow [.github/workflows/ci-cd.yml](.github/workflows/ci-cd.yml) suit maintenant la structure du projet:
+
+- `test` sur chaque push et pull request
+- `build` sur `main` pour construire et pousser les images Docker vers ACR
+- `deploy` sur `main` pour mettre à jour les Container Apps
+
+Secrets GitHub attendus pour la partie déploiement:
+
+- `AZURE_CLIENT_ID`
+- `AZURE_CLIENT_SECRET`
+- `AZURE_TENANT_ID`
+- `AZURE_SUBSCRIPTION_ID`
+- `ACR_NAME`
+- `RESOURCE_GROUP`
+- `CONTAINERAPPS_ENVIRONMENT`
+- `API_KEY`
+
+Variables GitHub optionnelles pour personnaliser les noms d'images ou d'applications:
+
+- `API_IMAGE_NAME`
+- `DASHBOARD_IMAGE_NAME`
+- `API_APP_NAME`
+- `DASHBOARD_APP_NAME`
+- `API_BASE_URL`
+
+Si tu n'as pas encore ces secrets, garde le script local `make deploy` comme voie manuelle de déploiement.
+
+## Si tu utilises Azure App Service au lieu de Container Apps
+
+Le message "Hey, Python developers! Your app service is up and running." indique que tu es sur un App Service Python par défaut, pas sur l'API FastAPI du projet.
+
+Dans ce cas, le startup command à mettre dans le portail Azure est:
+
+```bash
+gunicorn --bind=0.0.0.0:8000 --workers=1 --worker-class uvicorn.workers.UvicornWorker api.main:app
+```
+
+Points à vérifier:
+
+- l'application doit être déployée depuis le contenu du repo, pas seulement créer un App Service vide
+- `gunicorn` est maintenant présent dans `requirements.txt`
+- l'application doit écouter sur le port attendu par App Service, ici `8000`
+- si Azure fournit une variable `PORT`, tu peux aussi adapter la commande avec `--bind=0.0.0.0:$PORT`
+
+Si tu déploies en container personnalisé sur App Service, garde plutôt le startup command vide et laisse le `CMD` du Dockerfile lancer `uvicorn`.
+
 ## Runtime via Managed Identity
 
 L'application FastAPI ne consomme actuellement aucun service Azure au runtime. Il n'y a donc pas de credential Azure à maintenir dans le code applicatif aujourd'hui.
@@ -90,5 +138,4 @@ make dev
 
 ## Remarques Azure
 
-La partie Azure est maintenant préparée pour un déploiement local avec Azure CLI.
-Le workflow GitHub Actions reste centré sur la CI, et le déploiement Azure se fait via `make deploy`.
+La partie Azure est maintenant préparée pour un déploiement local avec Azure CLI et pour un déploiement GitHub Actions plus proche du sujet.

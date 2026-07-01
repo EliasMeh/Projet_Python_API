@@ -1,4 +1,4 @@
-name: CI
+name: CI/CD
 
 on:
   push:
@@ -11,8 +11,16 @@ on:
       - master
   workflow_dispatch:
 
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  PYTHON_VERSION: "3.11"
+  AZURE_WEBAPP_NAME: projetapielias
+
 jobs:
-  lint-and-test:
+  test:
     runs-on: ubuntu-latest
 
     steps:
@@ -22,7 +30,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
 
       - name: Install dependencies
@@ -31,24 +39,65 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run lint
-        run: python -m flake8 api/ dashboard/ tests/
+        run: make lint
 
       - name: Run tests
-        run: python -m pytest tests/ -v --cov=api --cov-fail-under=75
+        run: make test
 
-  build-images:
+  build:
     runs-on: ubuntu-latest
-    needs: lint-and-test
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Build API image
-        run: docker build -f api/Dockerfile -t devops-monitor-api:ci .
+      - name: Prepare deployment package
+        run: |
+          mkdir -p package
+          rsync -av \
+            --exclude '.git' \
+            --exclude '.github' \
+            --exclude '.venv' \
+            --exclude 'venv' \
+            --exclude '__pycache__' \
+            --exclude 'tests' \
+            --exclude '.pytest_cache' \
+            --exclude '.mypy_cache' \
+            --exclude '.env' \
+            ./ package/
 
-      - name: Build dashboard image
-        run: docker build -f dashboard/Dockerfile -t devops-monitor-dashboard:ci .
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-app
+          path: package
 
-# Azure deployment will be added later once the target subscription,
-# resource group, hosting service, registry, and environment names are known.
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment:
+      name: production
+      url: https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net
+
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: python-app
+          path: .
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          package: .
