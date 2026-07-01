@@ -1,4 +1,4 @@
-name: Build and deploy Python app to Azure Web App - dashboardelias
+name: Build and deploy Python app to Azure Web App - dashboardelias Test off
 
 on:
   push:
