@@ -71,9 +71,6 @@ jobs:
     permissions:
       id-token: write
       contents: read
-    environment:
-      name: Production
-      url: https://${{ env.APP_NAME }}.azurewebsites.net
 
     steps:
       - name: Download artifact from build job
