@@ -2,10 +2,12 @@
 
 Projet final du cours Python for DevOps : une API FastAPI de monitoring, un dashboard Streamlit, des tests automatisés et un environnement local reproductible avec Docker Compose.
 
+Déploiement actuel : l'application est hébergée sur Azure Web App et accessible ici : https://projetapielias-agc2gsa7a4fvfkfm.polandcentral-01.azurewebsites.net
+
 ## Architecture
 
 - `api/` : backend FastAPI avec routes `/health`, `/metrics`, `/servers` et WebSocket `/ws/metrics`
-- `dashboard/` : interface Streamlit avec onglets métriques et serveurs
+- `dashboard/` : interface Streamlit, déployée comme webapp
 - `tests/` : tests unitaires et tests de routes
 - `docker-compose.yml` : exécution locale de la stack
 
@@ -29,11 +31,15 @@ make test
 - `API_BASE_URL` : URL de l'API utilisée par le dashboard, par défaut `http://api:8000`
 - `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `AZURE_TENANT_ID` : non requis par l'application actuelle
 
-## Déploiement sans accès Microsoft Entra ID
+## Déploiement actuel sur Azure Web App
 
-Le projet ne dépend pas d'un service principal côté développeur. Le déploiement se fait avec l'identité Azure déjà ouverte sur ta machine via `az login`.
+Le projet est aujourd'hui déployé sur Azure Web App. L'URL publique est : https://projetapielias-agc2gsa7a4fvfkfm.polandcentral-01.azurewebsites.net
 
-Variables nécessaires au déploiement de l'API sur Azure Container Apps:
+Le workflow principal de déploiement reste [.github/workflows/main_projetapielias.yml](.github/workflows/main_projetapielias.yml), qui pousse l'application vers Azure Web App.
+
+Le fichier [.github/workflows/ci-cd.yml](.github/workflows/ci-cd.yml) est conservé volontairement avec ce nom pour un transfert futur vers AKS. Il ne correspond pas au chemin de production actuel.
+
+Variables historiques liées à l'ancien déploiement Azure Container Apps:
 
 - `AZURE_SUBSCRIPTION_ID`
 - `RESOURCE_GROUP`
@@ -62,15 +68,17 @@ export API_KEY="changeme"
 make deploy
 ```
 
-Le script crée ou met à jour le resource group, l'ACR, l'environnement Container Apps et la Container App. Il publie l'image Docker dans ACR avec ton identité Azure CLI, puis active une identité managée sur la Container App.
+Ce bloc reflète l'ancien chemin de déploiement Container Apps du projet. Il reste utile comme référence si tu dois réutiliser l'architecture Azure avec une containerisation complète, mais ce n'est plus le chemin utilisé pour l'URL Web App ci-dessus.
 
 ## Pipeline GitHub Actions
 
-Le workflow [.github/workflows/ci-cd.yml](.github/workflows/ci-cd.yml) suit maintenant la structure du projet:
+Le workflow [.github/workflows/main_projetapielias.yml](.github/workflows/main_projetapielias.yml) assure le build et le déploiement sur Azure Web App.
+
+Le workflow [.github/workflows/ci-cd.yml](.github/workflows/ci-cd.yml) est maintenu pour une migration éventuelle vers AKS :
 
 - `test` sur chaque push et pull request
 - `build` sur `main` pour construire et pousser les images Docker vers ACR
-- `deploy` sur `main` pour mettre à jour les Container Apps
+- `deploy` sur `main` pour appliquer les manifests Kubernetes sur AKS
 
 Secrets GitHub attendus pour la partie déploiement:
 
@@ -91,7 +99,7 @@ Variables GitHub optionnelles pour personnaliser les noms d'images ou d'applicat
 - `DASHBOARD_APP_NAME`
 - `API_BASE_URL`
 
-Si tu n'as pas encore ces secrets, garde le script local `make deploy` comme voie manuelle de déploiement.
+Si tu n'as pas encore ces secrets, garde le script local `make deploy` comme voie manuelle de déploiement historique pour Container Apps.
 
 ## Si tu utilises Azure App Service au lieu de Container Apps
 
