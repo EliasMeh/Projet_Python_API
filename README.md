@@ -2,7 +2,7 @@
 
 Projet final du cours Python for DevOps : une API FastAPI de monitoring, un dashboard Streamlit, des tests automatisés et un environnement local reproductible avec Docker Compose.
 
-Déploiement actuel : l'application est hébergée sur Azure Web App et accessible ici : https://projetapielias-agc2gsa7a4fvfkfm.polandcentral-01.azurewebsites.net
+Déploiement actuel : l'application est hébergée sur Azure Web App et accessible ici (API) : https://projetapielias-agc2gsa7a4fvfkfm.polandcentral-01.azurewebsites.net/docs et dashboard : https://dashboardelias-bmbhdkcbhhd9frcf.polandcentral-01.azurewebsites.net
 
 ## Architecture
 
@@ -77,8 +77,6 @@ Le projet est déployé sur Azure Web App avec deux applications séparées:
 
 - API: [main_projetapielias.yml](.github/workflows/main_projetapielias.yml)
 - Dashboard: [main_dashboardelias.yml](.github/workflows/main_dashboardelias.yml)
-
-Le lien public fourni pour l'application est: https://projetapielias-agc2gsa7a4fvfkfm.polandcentral-01.azurewebsites.net
 
 Les deux autres workflows sont conservés comme base de migration vers AKS:
 
