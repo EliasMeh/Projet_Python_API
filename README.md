@@ -6,10 +6,50 @@ Déploiement actuel : l'application est hébergée sur Azure Web App et accessib
 
 ## Architecture
 
+```mermaid
+flowchart TD
+	A[devops-monitor] --> B[api/]
+	A --> C[dashboard/]
+	A --> D[tests/]
+	A --> E[docker-compose.yml]
+	A --> F[Makefile]
+	A --> G[requirements.txt]
+	A --> H[README.md]
+
+	B --> B1[FastAPI API]
+	B --> B2[metrics.py]
+	B --> B3[auth.py]
+	B --> B4[models.py]
+	B --> B5[poller.py]
+	B --> B6[Dockerfile]
+
+	C --> C1[Streamlit dashboard]
+	C --> C2[app.py]
+	C --> C3[Dockerfile]
+
+	D --> D1[test_metrics.py]
+	D --> D2[test_routes.py]
+
+	E --> E1[api service]
+	E --> E2[dashboard service]
+	E1 --> E3[http://api:8000]
+	E2 --> E4[http://api:8000]
+```
+
 - `api/` : backend FastAPI avec routes `/health`, `/metrics`, `/servers` et WebSocket `/ws/metrics`
 - `dashboard/` : interface Streamlit, déployée comme webapp
 - `tests/` : tests unitaires et tests de routes
 - `docker-compose.yml` : exécution locale de la stack
+
+## Captures
+
+### API
+
+![Capture de la partie API](images/api.png)
+
+### Dashboard
+
+![Capture de la partie Dashboard](images/dashboard.png)
 
 ## Prérequis
 
@@ -31,100 +71,39 @@ make test
 - `API_BASE_URL` : URL de l'API utilisée par le dashboard, par défaut `http://api:8000`
 - `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `AZURE_TENANT_ID` : non requis par l'application actuelle
 
-## Déploiement actuel sur Azure Web App
+## Déploiement Azure
 
-Le projet est aujourd'hui déployé sur Azure Web App. L'URL publique est : https://projetapielias-agc2gsa7a4fvfkfm.polandcentral-01.azurewebsites.net
+Le projet est déployé sur Azure Web App avec deux applications séparées:
 
-Le workflow principal de déploiement reste [.github/workflows/main_projetapielias.yml](.github/workflows/main_projetapielias.yml), qui pousse l'application vers Azure Web App.
+- API: [main_projetapielias.yml](.github/workflows/main_projetapielias.yml)
+- Dashboard: [main_dashboardelias.yml](.github/workflows/main_dashboardelias.yml)
 
-Le fichier [.github/workflows/ci-cd.yml](.github/workflows/ci-cd.yml) est conservé volontairement avec ce nom pour un transfert futur vers AKS. Il ne correspond pas au chemin de production actuel.
+Le lien public fourni pour l'application est: https://projetapielias-agc2gsa7a4fvfkfm.polandcentral-01.azurewebsites.net
 
-Variables historiques liées à l'ancien déploiement Azure Container Apps:
+Les deux autres workflows sont conservés comme base de migration vers AKS:
 
-- `AZURE_SUBSCRIPTION_ID`
-- `RESOURCE_GROUP`
-- `CONTAINERAPPS_ENVIRONMENT`
-- `ACR_NAME`
-- `CONTAINER_APP_NAME`
-- `API_KEY`
-- `IMAGE_NAME` : optionnel, défaut `devops-monitor-api`
-- `DOCKERFILE_PATH` : optionnel, défaut `api/Dockerfile`
-- `LOCATION` : optionnel, défaut `westeurope`
-- `TARGET_PORT` : optionnel, défaut `8000`
-- `INGRESS` : optionnel, défaut `external`
-- `TAG` : optionnel, défaut `latest`
+- [dashboardelias.yml](.github/workflows/dashboardelias.yml)
+- [ci-cd.yml](.github/workflows/ci-cd.yml)
 
-Commandes prêtes à copier:
+Ils ne correspondent pas au chemin de production actuel.
 
-```bash
-az login
-az account set --subscription "$AZURE_SUBSCRIPTION_ID"
-export AZURE_SUBSCRIPTION_ID="00000000-0000-0000-0000-000000000000"
-export RESOURCE_GROUP="rg-devops-monitor"
-export CONTAINERAPPS_ENVIRONMENT="cae-devops-monitor"
-export ACR_NAME="myregistry"
-export CONTAINER_APP_NAME="devops-monitor-api"
-export API_KEY="changeme"
-make deploy
-```
+Les variables de déploiement Azure Web App sont gérées dans les workflows GitHub Actions via les secrets Azure App Service déjà configurés. Le dépôt conserve aussi les anciens éléments d'infrastructure Container Apps pour mémoire, mais ils ne pilotent plus le déploiement courant.
 
-Ce bloc reflète l'ancien chemin de déploiement Container Apps du projet. Il reste utile comme référence si tu dois réutiliser l'architecture Azure avec une containerisation complète, mais ce n'est plus le chemin utilisé pour l'URL Web App ci-dessus.
+## Conformité au Projet_Proposal
 
-## Pipeline GitHub Actions
+Hors partie Azure, le projet répond aux exigences du cahier des charges:
 
-Le workflow [.github/workflows/main_projetapielias.yml](.github/workflows/main_projetapielias.yml) assure le build et le déploiement sur Azure Web App.
+- API FastAPI avec `GET /health`, `GET /metrics`, `POST /servers`, `GET /servers`, `GET /servers/{id}`, `DELETE /servers/{id}`, `POST /servers/{id}/check` et `WS /ws/metrics`
+- métriques système via `psutil` avec CPU, mémoire et disque
+- authentification par clé API sur les opérations sensibles
+- modèle `Server` avec schémas d'entrée et de sortie Pydantic
+- boucle de polling asynchrone pour mettre à jour l'état des serveurs
+- dashboard Streamlit avec onglets métriques et serveurs
+- cache, métriques, graphique live et tableau coloré côté dashboard
+- Docker, Docker Compose et Makefile pour l'exécution locale
+- tests automatisés avec couverture minimale visée à 75 %
 
-Le workflow [.github/workflows/ci-cd.yml](.github/workflows/ci-cd.yml) est maintenu pour une migration éventuelle vers AKS :
-
-- `test` sur chaque push et pull request
-- `build` sur `main` pour construire et pousser les images Docker vers ACR
-- `deploy` sur `main` pour appliquer les manifests Kubernetes sur AKS
-
-Secrets GitHub attendus pour la partie déploiement:
-
-- `AZURE_CLIENT_ID`
-- `AZURE_CLIENT_SECRET`
-- `AZURE_TENANT_ID`
-- `AZURE_SUBSCRIPTION_ID`
-- `ACR_NAME`
-- `RESOURCE_GROUP`
-- `CONTAINERAPPS_ENVIRONMENT`
-- `API_KEY`
-
-Variables GitHub optionnelles pour personnaliser les noms d'images ou d'applications:
-
-- `API_IMAGE_NAME`
-- `DASHBOARD_IMAGE_NAME`
-- `API_APP_NAME`
-- `DASHBOARD_APP_NAME`
-- `API_BASE_URL`
-
-Si tu n'as pas encore ces secrets, garde le script local `make deploy` comme voie manuelle de déploiement historique pour Container Apps.
-
-## Si tu utilises Azure App Service au lieu de Container Apps
-
-Le message "Hey, Python developers! Your app service is up and running." indique que tu es sur un App Service Python par défaut, pas sur l'API FastAPI du projet.
-
-Dans ce cas, le startup command à mettre dans le portail Azure est:
-
-```bash
-gunicorn --bind=0.0.0.0:8000 --workers=1 --worker-class uvicorn.workers.UvicornWorker api.main:app
-```
-
-Points à vérifier:
-
-- l'application doit être déployée depuis le contenu du repo, pas seulement créer un App Service vide
-- `gunicorn` est maintenant présent dans `requirements.txt`
-- l'application doit écouter sur le port attendu par App Service, ici `8000`
-- si Azure fournit une variable `PORT`, tu peux aussi adapter la commande avec `--bind=0.0.0.0:$PORT`
-
-Si tu déploies en container personnalisé sur App Service, garde plutôt le startup command vide et laisse le `CMD` du Dockerfile lancer `uvicorn`.
-
-## Runtime via Managed Identity
-
-L'application FastAPI ne consomme actuellement aucun service Azure au runtime. Il n'y a donc pas de credential Azure à maintenir dans le code applicatif aujourd'hui.
-
-Si tu ajoutes plus tard Key Vault, Blob Storage, Service Bus, Azure OpenAI ou un autre SDK Azure, la bonne approche sera de réutiliser l'identité managée de la Container App. Dans ce cas, `AZURE_CLIENT_ID` resterait uniquement optionnel pour une identité managée utilisateur, mais il n'est pas nécessaire pour le projet actuel.
+Les exigences Azure du document d'origine portaient sur Container Apps et ACR; l'implémentation courante du dépôt a été adaptée à Azure Web App pour l'hébergement réel.
 
 ## Lancement local sans Docker
 
@@ -144,6 +123,6 @@ make dev
 - `POST /servers/{id}/check`
 - `WS /ws/metrics`
 
-## Remarques Azure
+## Notes
 
-La partie Azure est maintenant préparée pour un déploiement local avec Azure CLI et pour un déploiement GitHub Actions plus proche du sujet.
+Le dépôt reste orienté pour une lecture rapide du projet et pour une migration éventuelle vers AKS si besoin.
